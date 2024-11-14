@@ -1,11 +1,38 @@
-const graph = document.getElementsByTagName("svg")[0];
+const svg = document.getElementsByTagName("svg")[0];
 const edgesGroup = document.getElementById("edges");
 const verticesGroup = document.getElementById("vertices");
+let selectedVertex = null;
+const userGraph = new Graph();
+
+class Graph {
+    constructor() {
+        this.vertices = [];
+        this.vertexCount = 1;
+    }
+
+    clear() {
+        for (const vertex of this.vertices) {
+            if (vertex != null) {
+                vertex.delVertex(this)
+            }
+        }
+        this.vertices = [];
+        this.vertexCount = 1;
+    }
+}
+
+class Vertex {
+    constructor(id) {
+        this.neighbours = [];
+        this.id = id
+    }
+}
+
+
 
 //let adjacencyMatrix = [];
 let vertexCount = 1;
 let vertexList = [];
-let selectedVertex = null;
 
 class Vertex {
     constructor(x,y) {
@@ -22,29 +49,14 @@ class Vertex {
         vertexCount++;
     }
 
-    static addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2) {
-        for (const neighbour of vertexList[vertex1-1].neighbours) {
-            if (neighbour == vertex2) {
-                alert("Edge already exists!");
-                return;
-            }
-        }
-        const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line'); 
-        edge.setAttribute('x1', x1);
-        edge.setAttribute('y1', y1);
-        edge.setAttribute('x2', x2);
-        edge.setAttribute('y2', y2);
-        edge.setAttribute('class', 'edge');
-        edge.setAttribute('id', edgeId);
-        edgesGroup.appendChild(edge);
-        selectedVertex.setAttribute('fill', 'red');
-        selectedVertex = null;
+    static addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2, vertexList) {
+
         vertexList[vertex1-1].neighbours.push(vertex2)
         vertexList[vertex2-1].neighbours.push(vertex1)
         return;
     }
 
-    delVertex() {
+    delVertex(vertexList) {
         const id = this.id;
         const vertex = vertexList[id-1];
         const neighbours = vertex.neighbours;
@@ -56,7 +68,7 @@ class Vertex {
             edgesToDelete.push(edgeId)
         }
         for (const edge of edgesToDelete) {
-            Vertex.delEdge(edge);
+            Vertex.delEdge(edge, vertexList);
         }
         const vertexToDelete = document.getElementById(id)
         vertexToDelete.remove()
@@ -64,12 +76,12 @@ class Vertex {
         return;
     }
     
-    static delEdge(id) {
+    static delEdge(id, vertexList) {
         const [vertex1, vertex2] = id.split("-").map(Number);
         let index = vertexList[vertex1-1].neighbours.indexOf(vertex2)
         vertexList[vertex1-1].neighbours.splice(index, 1);
         index = vertexList[vertex2-1].neighbours.indexOf(vertex1)
-        vertexList[vertex2-1].neighbours.splice(index, 1);        
+        vertexList[vertex2-1].neighbours.splice(index, 1);
         const edge = document.getElementById(id)
         edge.remove()
         return;
@@ -79,7 +91,6 @@ let mode = "vertex";
 document.getElementById('vertex').addEventListener('change', function() {
                                                                 mode = "vertex"; 
                                                                 selectedVertex != null ? selectedVertex.setAttribute("fill", "red") : null;
-
                                                             });
 document.getElementById('edge').addEventListener('change', () => { mode = "edge"; });
 document.getElementById('delete').addEventListener('change', function() {
@@ -112,25 +123,42 @@ graph.addEventListener('click', function(event) {
             }
             if (selectedVertex == null) {
                 selectedVertex = event.target;
-                selectedVertex.setAttribute("fill", "blue")
+                selectedVertex.setAttribute("fill", "lightblue");
                 return;
             }
+            
             const sortedId = [Number(selectedVertex.getAttribute('id')), Number(event.target.getAttribute('id'))].sort()
             const edgeId = sortedId.join('-');
             const [vertex1, vertex2] = sortedId
+
+            for (const neighbour of vertexList[vertex1-1].neighbours) {
+                if (neighbour == vertex2) {
+                    alert("Added multiple edge!");
+                }
+            }
             const x1 = selectedVertex.getAttribute('cx');
             const y1 = selectedVertex.getAttribute('cy');
             const x2 = event.target.getAttribute('cx');
-            const y2 = event.target.getAttribute('cy'); 
-            Vertex.addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2);
+            const y2 = event.target.getAttribute('cy');
+            const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line'); 
+            edge.setAttribute('x1', x1);
+            edge.setAttribute('y1', y1);
+            edge.setAttribute('x2', x2);
+            edge.setAttribute('y2', y2);
+            edge.setAttribute('class', 'edge');
+            edge.setAttribute('id', edgeId);
+            edgesGroup.appendChild(edge);
+            selectedVertex.setAttribute('fill', 'red');
+            selectedVertex = null;
+            Vertex.addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2,vertexList);
             break
 
         case "delete":
             if (event.target.classList.contains("vertex")) {
                 const id = event.target.getAttribute('id')
-                vertexList[id-1].delVertex();
+                vertexList[id-1].delVertex(vertexList);
             } else if (event.target.classList.contains("edge")) {
-                Vertex.delEdge(event.target.getAttribute('id'));
+                Vertex.delEdge(event.target.getAttribute('id'), vertexList);
             }
             break
     }
@@ -145,7 +173,7 @@ const calculateButton = document.getElementById("calculate");
 clearButton.addEventListener("click", function() {
     for (const vertex of vertexList) {
         if (vertex != null) {
-            vertex.delVertex()
+            vertex.delVertex(vertexList)
         }
     }
     vertexList = [];
@@ -183,7 +211,6 @@ function isConnected() {
     depthFirstSearch(root.id)
 
     if (visited.size != trueVertexCount) {
-        alert("graph is unconnected")
         return false;
     } else {
         return true;
@@ -195,9 +222,16 @@ function isConnected() {
 
 calculateButton.addEventListener("click", function() {
     if (!isConnected()) {
+        alert("graph is unconnected")
         return;
     }
-    for (const vertex of vertexList) {
-        //console.log(vertex);
+    const graphG = structuredClone(vertexList.filter(vertex => vertex !== null));
+
+
+    function tauOfG(graphG) {
+        //return tauOfG(G-e) + tauOfG(G\e);
     }
+
+    console.log(tauOfG(vertexList));
+
 });
