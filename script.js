@@ -1,23 +1,101 @@
 const svg = document.getElementsByTagName("svg")[0];
 const edgesGroup = document.getElementById("edges");
 const verticesGroup = document.getElementById("vertices");
+const clearButton = document.getElementById("clear");
+const calculateButton = document.getElementById("calculate");
 let selectedVertex = null;
-const userGraph = new Graph();
+let mode = "vertex";
 
 class Graph {
     constructor() {
         this.vertices = [];
-        this.vertexCount = 1;
+        this.vertexCount = 0;
+    }
+
+    createVertex() {
+        const newVertex = new Vertex(this.vertexCount);
+        this.vertices.push(newVertex);
+        this.vertexCount++;
+    }
+
+    isEmpty() {
+        return this.vertices.length == 0;
+    }
+
+    isConnected() {
+        const root = this.vertices.find(element => element != null);
+        let trueVertexCount = 0;
+        for (const vertex of this.vertices) {
+            if (vertex != null) {
+                trueVertexCount++;
+            }
+        }
+
+        const visited = new Set();
+
+        const depthFirstSearch = (id) => {
+            visited.add(id);
+            for (const neighbour of this.vertices[id].neighbours) {
+                if (!visited.has(neighbour)) {
+                    depthFirstSearch(neighbour);
+                }
+            }
+        }
+    
+        depthFirstSearch(root.id)
+        if (visited.size != trueVertexCount) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     clear() {
-        for (const vertex of this.vertices) {
-            if (vertex != null) {
-                vertex.delVertex(this)
+        this.vertices = [];
+        this.vertexCount = 0;
+    }
+
+    getNeighbours(v1) {
+        return this.vertices[v1].neighbours
+    }
+
+    areNeighbours(v1, v2) {
+        for (const neighbour of this.vertices[v1].neighbours) {
+            if (neighbour == v2) {
+                return true;
             }
         }
-        this.vertices = [];
-        this.vertexCount = 1;
+        return false;
+    }
+
+    addEdge(v1, v2) {
+        this.vertices[v1].neighbours.push(v2);
+        this.vertices[v2].neighbours.push(v1); 
+    }
+
+    delVertex(v1) {
+        const edgesToDelete = [];
+        for (const neighbour of this.vertices[v1].neighbours) {
+            edgesToDelete.push(neighbour)
+        }
+        for (const v2 of edgesToDelete) {
+            this.delEdge(v1, v2);
+        }
+        this.vertices[v1] = null;
+        if (this.vertices.length == 0) {
+            this.vertexCount = 0;
+        }
+        if (this.vertices.every(entry => entry == null)) {
+            this.clear()
+        }
+    }
+
+    delEdge(v1, v2) {
+        const indexV1 = this.vertices[v1].neighbours.indexOf(v2);
+        this.vertices[v1].neighbours.splice(indexV1, 1);
+    
+        const indexV2 = this.vertices[v2].neighbours.indexOf(v1);
+        this.vertices[v2].neighbours.splice(indexV2, 1);
     }
 }
 
@@ -26,68 +104,14 @@ class Vertex {
         this.neighbours = [];
         this.id = id
     }
-}
 
-
-
-//let adjacencyMatrix = [];
-let vertexCount = 1;
-let vertexList = [];
-
-class Vertex {
-    constructor(x,y) {
-        this.neighbours = [];
-        this.id = vertexCount;
-        const newVertex = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        newVertex.setAttribute('cx', x);
-        newVertex.setAttribute('cy', y);
-        newVertex.setAttribute('r', 15);
-        newVertex.setAttribute('fill', 'red')
-        newVertex.setAttribute('class', 'vertex');
-        newVertex.setAttribute("id", vertexCount);
-        verticesGroup.appendChild(newVertex);
-        vertexCount++;
-    }
-
-    static addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2, vertexList) {
-
-        vertexList[vertex1-1].neighbours.push(vertex2)
-        vertexList[vertex2-1].neighbours.push(vertex1)
-        return;
-    }
-
-    delVertex(vertexList) {
-        const id = this.id;
-        const vertex = vertexList[id-1];
-        const neighbours = vertex.neighbours;
-        let edgesToDelete = [];
-
-        for (const neighbour of neighbours) {
-            const sortedId = [vertex.id, vertexList[neighbour-1].id].sort()
-            const edgeId = sortedId.join('-');
-            edgesToDelete.push(edgeId)
-        }
-        for (const edge of edgesToDelete) {
-            Vertex.delEdge(edge, vertexList);
-        }
-        const vertexToDelete = document.getElementById(id)
-        vertexToDelete.remove()
-        vertexList[id-1] = null;
-        return;
-    }
-    
-    static delEdge(id, vertexList) {
-        const [vertex1, vertex2] = id.split("-").map(Number);
-        let index = vertexList[vertex1-1].neighbours.indexOf(vertex2)
-        vertexList[vertex1-1].neighbours.splice(index, 1);
-        index = vertexList[vertex2-1].neighbours.indexOf(vertex1)
-        vertexList[vertex2-1].neighbours.splice(index, 1);
-        const edge = document.getElementById(id)
-        edge.remove()
-        return;
+    clone() {
+        const clonedVertex = new Vertex(this.id);
+        clonedVertex.neighbours = [...this.neighbours];
+        return clonedVertex;
     }
 }
-let mode = "vertex";
+
 document.getElementById('vertex').addEventListener('change', function() {
                                                                 mode = "vertex"; 
                                                                 selectedVertex != null ? selectedVertex.setAttribute("fill", "red") : null;
@@ -99,48 +123,75 @@ document.getElementById('delete').addEventListener('change', function() {
 
 });
 
-graph.addEventListener('click', function(event) {
+const userGraph = new Graph();
+svg.addEventListener('click', function(event) {
     switch(mode) {
-
-        case "vertex":
-            if (event.target != graph) {
+        case "vertex": {
+            if (event.target != svg) {
                 return;
             }
-            const graphArea = graph.getBoundingClientRect();
-            const x = event.clientX - graphArea.left;
-            const y = event.clientY - graphArea.top;
-            vertexList[vertexCount-1] = new Vertex(x, y);
+            const svgArea = svg.getBoundingClientRect();
+            const x = event.clientX - svgArea.left;
+            const y = event.clientY - svgArea.top;
+
+            const vertexGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            vertexGroup.setAttribute('class', 'vertex-group');
+
+            const vertexCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            vertexCircle.setAttribute('cx', x);
+            vertexCircle.setAttribute('cy', y);
+            vertexCircle.setAttribute('r', 15);
+            vertexCircle.setAttribute('fill', 'red')
+            vertexCircle.setAttribute('class', 'vertex');
+            vertexCircle.setAttribute("id", userGraph.vertexCount);
+
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.textContent = userGraph.vertexCount;
+            label.setAttribute('x', x);
+            label.setAttribute('y', y + 5);
+            label.setAttribute('class', 'vertex-label');
+
+            vertexGroup.appendChild(vertexCircle);
+            vertexGroup.appendChild(label);
+            verticesGroup.appendChild(vertexGroup);
+
+            userGraph.createVertex()
             break
-
-        case "edge":
-            if (!event.target.classList.contains("vertex")) {
+        }
+        case "edge": {
+            let chosen = null;
+            if (event.target.classList.contains("vertex")) {
+                chosen = event.target;
+            } else if (event.target.classList.contains("vertex-label")) {
+                chosen = event.target.parentNode.firstElementChild;
+            } else {
                 return;
             }
-            if (selectedVertex == event.target) {
+
+            if (selectedVertex == chosen) {
                 selectedVertex.setAttribute("fill", "red")
                 selectedVertex = null;
                 return;
-            }
-            if (selectedVertex == null) {
-                selectedVertex = event.target;
+            } else if (selectedVertex == null) {
+                selectedVertex = chosen;
                 selectedVertex.setAttribute("fill", "lightblue");
                 return;
             }
-            
-            const sortedId = [Number(selectedVertex.getAttribute('id')), Number(event.target.getAttribute('id'))].sort()
-            const edgeId = sortedId.join('-');
-            const [vertex1, vertex2] = sortedId
 
-            for (const neighbour of vertexList[vertex1-1].neighbours) {
-                if (neighbour == vertex2) {
-                    alert("Added multiple edge!");
-                }
+            const sortedId = [Number(selectedVertex.getAttribute('id')), Number(chosen.getAttribute('id'))].sort()
+            const edgeId = sortedId.join('-');
+            const [v1, v2] = sortedId
+
+            if (userGraph.areNeighbours(v1, v2)) {
+                alert("multiple edges added");
             }
+
             const x1 = selectedVertex.getAttribute('cx');
             const y1 = selectedVertex.getAttribute('cy');
-            const x2 = event.target.getAttribute('cx');
-            const y2 = event.target.getAttribute('cy');
-            const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line'); 
+            const x2 = chosen.getAttribute('cx');
+            const y2 = chosen.getAttribute('cy');
+            const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+
             edge.setAttribute('x1', x1);
             edge.setAttribute('y1', y1);
             edge.setAttribute('x2', x2);
@@ -148,90 +199,114 @@ graph.addEventListener('click', function(event) {
             edge.setAttribute('class', 'edge');
             edge.setAttribute('id', edgeId);
             edgesGroup.appendChild(edge);
+
             selectedVertex.setAttribute('fill', 'red');
             selectedVertex = null;
-            Vertex.addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2,vertexList);
-            break
 
-        case "delete":
+            userGraph.addEdge(v1, v2)
+            break
+        }
+        case "delete": {
+            let chosen = null;
             if (event.target.classList.contains("vertex")) {
-                const id = event.target.getAttribute('id')
-                vertexList[id-1].delVertex(vertexList);
+                chosen = event.target;
+            } else if (event.target.classList.contains("vertex-label")) {
+                chosen = event.target.parentNode.firstElementChild;
+            }
+
+            if (chosen != null) {
+                const id = Number(chosen.getAttribute('id'));
+                const neighbours = userGraph.getNeighbours(id);
+                for (const neighbour of neighbours) {
+                    const edgeId = [neighbour, id].sort().join('-');
+                    document.getElementById(edgeId).remove();
+                }
+                userGraph.delVertex(id);
+                chosen.parentNode.remove()
             } else if (event.target.classList.contains("edge")) {
-                Vertex.delEdge(event.target.getAttribute('id'), vertexList);
+                const id = event.target.getAttribute('id');
+                const [v1, v2] = id.split("-").map(Number);
+                userGraph.delEdge(v1, v2);
+                event.target.remove()
             }
             break
+        }
     }
-    console.log(vertexList.length);
-    console.log(vertexList)
+    //console.log(userGraph);
 });
-
-
-const clearButton = document.getElementById("clear");
-const calculateButton = document.getElementById("calculate");
 
 clearButton.addEventListener("click", function() {
-    for (const vertex of vertexList) {
-        if (vertex != null) {
-            vertex.delVertex(vertexList)
-        }
+    edgesGroup.innerHTML = '';
+    verticesGroup.innerHTML = '';
+    if (selectedVertex != null) {
+        selectedVertex.setAttribute('fill', 'red');
+        selectedVertex = null;
     }
-    vertexList = [];
-    vertexCount = 1;
+    userGraph.clear()
 });
 
-function isConnected() {
-    let trueVertexCount = 0
-    let root = null
-    for (const vertex of vertexList) {
-        if (vertex != null) {
-            if (root == null) {
-                root = vertex
-            }
-            trueVertexCount++;
-        }
-    }
-
-    if (root == null) {
-        alert("graph is empty");
-        return;
-    }
-
-    const visited = new Set();
-
-    function depthFirstSearch(id) {
-        visited.add(id);
-        for (const neighbour of vertexList[id-1].neighbours) {
-            if (!visited.has(neighbour)) {
-                depthFirstSearch(neighbour);
-            }
-        }
-    }
-
-    depthFirstSearch(root.id)
-
-    if (visited.size != trueVertexCount) {
-        return false;
-    } else {
-        return true;
-    }
-
-
-}
 
 
 calculateButton.addEventListener("click", function() {
-    if (!isConnected()) {
-        alert("graph is unconnected")
+    if (selectedVertex != null) {
+        selectedVertex.setAttribute('fill', 'red');
+        selectedVertex = null;
+    }    if (userGraph.isEmpty()) {
+        alert("Graph is empty!");
+        return;
+    } else if (!userGraph.isConnected()) {
+        alert("Graph is unconnected!");
         return;
     }
-    const graphG = structuredClone(vertexList.filter(vertex => vertex !== null));
+    console.log("OK");
+    const graphG = new Graph();//.filter(vertex => vertex != null)
+    graphG.vertices = userGraph.vertices.map(vertex => vertex ? vertex.clone() : null);
+    //graphG.vertexCount = graphG.vertices.length;
+    //console.log(userGraph)
+    //console.log(graphG)
+    
 
+    function tauOfG(G) {
+        if (!G.isConnected()) {
+            return 0;
+        }
+        let trueVertexCount = 0;
+        for (const vertex of G.vertices) {
+            if (vertex != null) {
+                trueVertexCount++;
+            }
+        }
+        if (trueVertexCount == 1) {
+            return 1;
+        }
+        let v1 = null, e = null;
+        for (const vertex of G.vertices) {
+            if (vertex != null && vertex.neighbours.length > 0) {
+                v1 = vertex.id;
+                e = vertex.neighbours[0];
+                break;
+            }
+        }
+        const gMinusE = new Graph();
+        gMinusE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
 
-    function tauOfG(graphG) {
-        //return tauOfG(G-e) + tauOfG(G\e);
+        const gContractE = new Graph();
+        gContractE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
+
+        gMinusE.delEdge(v1, e);
+
+        for (const neighbour of gContractE.vertices[e].neighbours) {
+            const neighboursNeighbours = gContractE.vertices[neighbour].neighbours;
+            const index = neighboursNeighbours.indexOf(e);
+            neighboursNeighbours[index] = v1;
+        }
+
+        gContractE.vertices[v1].neighbours = gContractE.vertices[v1].neighbours.concat(gContractE.vertices[e].neighbours).filter(neighbour => neighbour != v1 && neighbour != e);
+        gContractE.vertices[e].neighbours = [];
+        gContractE.delVertex(e);
+        return tauOfG(gMinusE) + tauOfG(gContractE);
     }
 
-    console.log(tauOfG(vertexList));
+    console.log(tauOfG(graphG));
 
 });
