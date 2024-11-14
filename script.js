@@ -1,35 +1,94 @@
 const graph = document.getElementsByTagName("svg")[0];
-const edges = document.getElementById("edges");
-const vertices = document.getElementById("vertices");
+const edgesGroup = document.getElementById("edges");
+const verticesGroup = document.getElementById("vertices");
 
-let adjacencyMatrix = [];
-let vertex_count = 1;
-let selected_vertex = null;
+//let adjacencyMatrix = [];
+let vertexCount = 1;
+let vertexList = [];
+let selectedVertex = null;
 
-
-function addVertex(x,y) {
-    
-}
-const graphArea = graph.getBoundingClientRect();
-
-const vertex = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-vertex.setAttribute('cx', 100);
-vertex.setAttribute('cy', 100);
-vertex.setAttribute('class', 'vertex');
-vertex.setAttribute("id", vertex_count);
-vertices.appendChild(vertex);
-vertex_count++;
-
-graph.addEventListener('click', function(event) {
-    let mode = "vertex";
-    if (document.getElementById('vertex').checked) {
-        mode = "vertex";
-    } else if (document.getElementById('edge').checked) {
-        mode = "edge";
-    } else if (document.getElementById("delete").checked) {
-        mode = "delete";
+class Vertex {
+    constructor(x,y) {
+        this.neighbours = [];
+        this.id = vertexCount;
+        const newVertex = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        newVertex.setAttribute('cx', x);
+        newVertex.setAttribute('cy', y);
+        newVertex.setAttribute('r', 15);
+        newVertex.setAttribute('fill', 'red')
+        newVertex.setAttribute('class', 'vertex');
+        newVertex.setAttribute("id", vertexCount);
+        verticesGroup.appendChild(newVertex);
+        vertexCount++;
     }
 
+    static addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2) {
+        for (const neighbour of vertexList[vertex1-1].neighbours) {
+            if (neighbour == vertex2) {
+                alert("Edge already exists!");
+                return;
+            }
+        }
+        const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line'); 
+        edge.setAttribute('x1', x1);
+        edge.setAttribute('y1', y1);
+        edge.setAttribute('x2', x2);
+        edge.setAttribute('y2', y2);
+        edge.setAttribute('class', 'edge');
+        edge.setAttribute('id', edgeId);
+        edgesGroup.appendChild(edge);
+        selectedVertex.setAttribute('fill', 'red');
+        selectedVertex = null;
+        vertexList[vertex1-1].neighbours.push(vertex2)
+        vertexList[vertex2-1].neighbours.push(vertex1)
+        return;
+    }
+
+    delVertex() {
+        const id = this.id;
+        const vertex = vertexList[id-1];
+        const neighbours = vertex.neighbours;
+        let edgesToDelete = [];
+
+        for (const neighbour of neighbours) {
+            const sortedId = [vertex.id, vertexList[neighbour-1].id].sort()
+            const edgeId = sortedId.join('-');
+            edgesToDelete.push(edgeId)
+        }
+        for (const edge of edgesToDelete) {
+            Vertex.delEdge(edge);
+        }
+        const vertexToDelete = document.getElementById(id)
+        vertexToDelete.remove()
+        vertexList[id-1] = null;
+        return;
+    }
+    
+    static delEdge(id) {
+        const [vertex1, vertex2] = id.split("-").map(Number);
+        let index = vertexList[vertex1-1].neighbours.indexOf(vertex2)
+        vertexList[vertex1-1].neighbours.splice(index, 1);
+        index = vertexList[vertex2-1].neighbours.indexOf(vertex1)
+        vertexList[vertex2-1].neighbours.splice(index, 1);        
+        const edge = document.getElementById(id)
+        edge.remove()
+        return;
+    }
+}
+let mode = "vertex";
+document.getElementById('vertex').addEventListener('change', function() {
+                                                                mode = "vertex"; 
+                                                                selectedVertex != null ? selectedVertex.setAttribute("fill", "red") : null;
+
+                                                            });
+document.getElementById('edge').addEventListener('change', () => { mode = "edge"; });
+document.getElementById('delete').addEventListener('change', function() {
+                                                                mode = "delete"; 
+                                                                selectedVertex != null ? selectedVertex.setAttribute("fill", "red") : null;
+
+});
+
+graph.addEventListener('click', function(event) {
     switch(mode) {
 
         case "vertex":
@@ -39,57 +98,106 @@ graph.addEventListener('click', function(event) {
             const graphArea = graph.getBoundingClientRect();
             const x = event.clientX - graphArea.left;
             const y = event.clientY - graphArea.top;
-            const vertex = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            vertex.setAttribute('cx', x);
-            vertex.setAttribute('cy', y);
-            vertex.setAttribute('r', 15);
-            vertex.setAttribute('class', 'vertex');
-            vertex.setAttribute("id", vertex_count);
-            vertices.appendChild(vertex);
-            vertex_count++;
+            vertexList[vertexCount-1] = new Vertex(x, y);
             break
 
         case "edge":
             if (!event.target.classList.contains("vertex")) {
                 return;
             }
-            if (selected_vertex == event.target) {
-                selected_vertex.setAttribute("fill", "red")
-                selected_vertex = null;
+            if (selectedVertex == event.target) {
+                selectedVertex.setAttribute("fill", "red")
+                selectedVertex = null;
                 return;
             }
-            if (selected_vertex == null) {
-                selected_vertex = event.target;
-                selected_vertex.setAttribute("fill", "blue")
+            if (selectedVertex == null) {
+                selectedVertex = event.target;
+                selectedVertex.setAttribute("fill", "blue")
                 return;
             }
-            const edge_id = [Number(selected_vertex.getAttribute('id')), Number(event.target.getAttribute('id'))].sort().join('-');
-            const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            const x1 = selected_vertex.getAttribute('cx');
-            const y1 = selected_vertex.getAttribute('cy');
+            const sortedId = [Number(selectedVertex.getAttribute('id')), Number(event.target.getAttribute('id'))].sort()
+            const edgeId = sortedId.join('-');
+            const [vertex1, vertex2] = sortedId
+            const x1 = selectedVertex.getAttribute('cx');
+            const y1 = selectedVertex.getAttribute('cy');
             const x2 = event.target.getAttribute('cx');
-            const y2 = event.target.getAttribute('cy');  
-            edge.setAttribute('x1', x1);
-            edge.setAttribute('y1', y1);
-            edge.setAttribute('x2', x2);
-            edge.setAttribute('y2', y2);
-            edge.setAttribute('stroke', 'black');
-            edge.setAttribute('stroke-width', 2);
-            edge.setAttribute('class', 'edge')
-            edge.setAttribute('id', edge_id)
-            edges.appendChild(edge)
-            selected_vertex.setAttribute('fill', 'red'
-            )
-            selected_vertex = null;
-
+            const y2 = event.target.getAttribute('cy'); 
+            Vertex.addEdge(x1,y1,x2,y2,edgeId,vertex1,vertex2);
             break
 
         case "delete":
-            if (event.target == graph) {
-                return
+            if (event.target.classList.contains("vertex")) {
+                const id = event.target.getAttribute('id')
+                vertexList[id-1].delVertex();
+            } else if (event.target.classList.contains("edge")) {
+                Vertex.delEdge(event.target.getAttribute('id'));
             }
-            console.log(`adsasdasdsa`)
             break
+    }
+    console.log(vertexList.length);
+    console.log(vertexList)
+});
 
+
+const clearButton = document.getElementById("clear");
+const calculateButton = document.getElementById("calculate");
+
+clearButton.addEventListener("click", function() {
+    for (const vertex of vertexList) {
+        if (vertex != null) {
+            vertex.delVertex()
+        }
+    }
+    vertexList = [];
+    vertexCount = 1;
+});
+
+function isConnected() {
+    let trueVertexCount = 0
+    let root = null
+    for (const vertex of vertexList) {
+        if (vertex != null) {
+            if (root == null) {
+                root = vertex
+            }
+            trueVertexCount++;
+        }
+    }
+
+    if (root == null) {
+        alert("graph is empty");
+        return;
+    }
+
+    const visited = new Set();
+
+    function depthFirstSearch(id) {
+        visited.add(id);
+        for (const neighbour of vertexList[id-1].neighbours) {
+            if (!visited.has(neighbour)) {
+                depthFirstSearch(neighbour);
+            }
+        }
+    }
+
+    depthFirstSearch(root.id)
+
+    if (visited.size != trueVertexCount) {
+        alert("graph is unconnected")
+        return false;
+    } else {
+        return true;
+    }
+
+
+}
+
+
+calculateButton.addEventListener("click", function() {
+    if (!isConnected()) {
+        return;
+    }
+    for (const vertex of vertexList) {
+        //console.log(vertex);
     }
 });
