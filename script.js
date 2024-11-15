@@ -3,6 +3,7 @@ const edgesGroup = document.getElementById("edges");
 const verticesGroup = document.getElementById("vertices");
 const clearButton = document.getElementById("clear");
 const calculateButton = document.getElementById("calculate");
+const resultElement = document.getElementById("result");
 let selectedVertex = null;
 let mode = "vertex";
 
@@ -232,7 +233,6 @@ svg.addEventListener('click', function(event) {
             break
         }
     }
-    //console.log(userGraph);
 });
 
 clearButton.addEventListener("click", function() {
@@ -258,55 +258,56 @@ calculateButton.addEventListener("click", function() {
         alert("Graph is unconnected!");
         return;
     }
-    console.log("OK");
-    const graphG = new Graph();//.filter(vertex => vertex != null)
-    graphG.vertices = userGraph.vertices.map(vertex => vertex ? vertex.clone() : null);
-    //graphG.vertexCount = graphG.vertices.length;
-    //console.log(userGraph)
-    //console.log(graphG)
-    
+    resultElement.textContent = "Calculating...";
 
-    function tauOfG(G) {
-        if (!G.isConnected()) {
-            return 0;
-        }
-        let trueVertexCount = 0;
-        for (const vertex of G.vertices) {
-            if (vertex != null) {
-                trueVertexCount++;
+    setTimeout(() => {
+        const graphG = new Graph();
+        graphG.vertices = userGraph.vertices.map(vertex => vertex ? vertex.clone() : null);
+
+        
+
+        function tauOfG(G) {
+            if (!G.isConnected()) {
+                return 0;
             }
-        }
-        if (trueVertexCount == 1) {
-            return 1;
-        }
-        let v1 = null, e = null;
-        for (const vertex of G.vertices) {
-            if (vertex != null && vertex.neighbours.length > 0) {
-                v1 = vertex.id;
-                e = vertex.neighbours[0];
-                break;
+            let trueVertexCount = 0;
+            for (const vertex of G.vertices) {
+                if (vertex != null) {
+                    trueVertexCount++;
+                }
             }
+            if (trueVertexCount == 1) {
+                return 1;
+            }
+            let v1 = null, e = null;
+            for (const vertex of G.vertices) {
+                if (vertex != null && vertex.neighbours.length > 0) {
+                    v1 = vertex.id;
+                    e = vertex.neighbours[0];
+                    break;
+                }
+            }
+            const gMinusE = new Graph();
+            gMinusE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
+
+            const gContractE = new Graph();
+            gContractE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
+
+            gMinusE.delEdge(v1, e);
+
+            for (const neighbour of gContractE.vertices[e].neighbours) {
+                const neighboursNeighbours = gContractE.vertices[neighbour].neighbours;
+                const index = neighboursNeighbours.indexOf(e);
+                neighboursNeighbours[index] = v1;
+            }
+
+            gContractE.vertices[v1].neighbours = gContractE.vertices[v1].neighbours.concat(gContractE.vertices[e].neighbours).filter(neighbour => neighbour != v1 && neighbour != e);
+            gContractE.vertices[e].neighbours = [];
+            gContractE.delVertex(e);
+            return tauOfG(gMinusE) + tauOfG(gContractE);
         }
-        const gMinusE = new Graph();
-        gMinusE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
-
-        const gContractE = new Graph();
-        gContractE.vertices = G.vertices.map(vertex => vertex ? vertex.clone() : null);
-
-        gMinusE.delEdge(v1, e);
-
-        for (const neighbour of gContractE.vertices[e].neighbours) {
-            const neighboursNeighbours = gContractE.vertices[neighbour].neighbours;
-            const index = neighboursNeighbours.indexOf(e);
-            neighboursNeighbours[index] = v1;
-        }
-
-        gContractE.vertices[v1].neighbours = gContractE.vertices[v1].neighbours.concat(gContractE.vertices[e].neighbours).filter(neighbour => neighbour != v1 && neighbour != e);
-        gContractE.vertices[e].neighbours = [];
-        gContractE.delVertex(e);
-        return tauOfG(gMinusE) + tauOfG(gContractE);
-    }
-
-    console.log(tauOfG(graphG));
+        const result = tauOfG(graphG);
+        resultElement.textContent = `Tau of G: ${result}`;
+    }, 0);
 
 });

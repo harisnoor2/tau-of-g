@@ -8,18 +8,25 @@
         <title>Tau of G Calculator</title>
         <link rel="stylesheet" href="styles.css">
         <link rel="icon" href="">
-        <script src="script2.js" defer></script>
+        <script src="script.js" defer></script>
     </head>
     <body>
-        <div class = "buttons">
-            <input type="radio" id="vertex" name="edit_mode" value="vertex" checked>
-            <label for="vertex">vertex</label><br>
-            <input type="radio" id="edge" name="edit_mode" value="edge">
-            <label for="edge">edge</label><br>
-            <input type="radio" id="delete" name="edit_mode" value="delete">
-            <label for="delete">delete</label>
-            <button id="clear">Clear</button>
-            <button id="calculate">Calculate</button>
+        <header>
+            <h1>Tau of G Calculator</h1>
+            <p>Use the buttons below to create a connected graph, and then calculate to find the number of unique spanning trees.</p>
+        </header>
+        <div class="control-panel">
+            <div class="buttons">
+                <input type="radio" id="vertex" name="edit_mode" value="vertex" checked>
+                <label for="vertex">Vertex</label>
+                <input type="radio" id="edge" name="edit_mode" value="edge">
+                <label for="edge">Edge</label>
+                <input type="radio" id="delete" name="edit_mode" value="delete">
+                <label for="delete">Delete</label>
+                <button id="clear">Clear</button>
+                <button id="calculate">Calculate</button>
+            </div>
+            <div id="result">Tau of G: Not Calculated</div>
         </div>
         <div class = "svg">
             <svg xmlns="http://www.w3.org/2000/svg">
@@ -27,4 +34,13 @@
                 <g id="vertices"></g>
             </svg>
         </div>
+        <footer>
+            <p>
+                <a href="https://en.wikipedia.org/wiki/Deletion%E2%80%93contraction_formula#Spanning_trees" target="_blank">Deletion-Contraction</a> |
+                <a href="https://github.com/harisnoor2/tau-of-g" target="_blank">
+                    <img src="https://github.githubassets.com/assets/GitHub-Logo-ee398b662d42.png" alt="GitHub" class="github-icon">
+                </a>
+            </p>
+        </footer>
+    </body>
 </html>
