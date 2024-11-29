@@ -1,6 +1,6 @@
 Base graphing calculator that can be scaled to calculate many different graphing algorithms and visualizations
 
-Live demo @ https://harisnoor2.github.io/
+Live demo @ https://harisnoor2.github.io/graph.html
 
 Currently uses a recursive implementation of [deletion-contraction](https://en.wikipedia.org/wiki/Deletion%E2%80%93contraction_formula#Spanning_trees) to find Tau of G, that is:
 
